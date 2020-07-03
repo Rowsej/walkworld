@@ -1,0 +1,44 @@
+* {
+	margin: 0;
+	padding: 0;
+}
+body {
+	background: black;
+	color: white;
+}
+.container {
+	text-align: center;
+	user-select: none;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+}
+canvas {
+	width: 100vmin;
+	height: 100vmin;
+	/*background: hsl(40, 100%, 80%);*/
+	/*background: -webkit-linear-gradient(#F008 50%, #0F08 50%), -webkit-linear-gradient(left, #00F8 50%, #000F 50%);*/
+	image-rendering: pixelated;
+	background: -webkit-linear-gradient(-90deg, #EC9F05 0%, #FF4E00 74%);
+}
+.joystick {
+	position: absolute;
+	right: 10px;
+	bottom: 10px;
+	width: 20vmin;
+	height: 20vmin;
+	background: radial-gradient(white, black);
+	border-radius: 50%;
+}
+.joystickCenter {
+	margin: auto;
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	width: 5vmin;
+	height: 5vmin;
+	background: radial-gradient(black, grey);
+	border-radius: 50%;
+}
