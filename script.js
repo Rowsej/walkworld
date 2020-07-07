@@ -279,7 +279,8 @@ function loop() {
 function update() {
 	var goingUp = keyStates.includes("w") || joystick.y < -30;
 	var canJump = player.jumps < player.maxJumps && getTime() - player.lastJumpTime >= player.jumpInterval;
-	if(goingUp && canJump) {
+	var canJump2 = player.v.y > 0? player.jumps > 0 : true;
+	if(goingUp && canJump && canJump2) {
 		player.v.y = -10;
 		player.jumps++;
 		player.lastJumpTime = getTime();
