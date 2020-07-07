@@ -246,7 +246,6 @@ async function init() {
 		var y = (e.targetTouches[0].clientY - joystickDims.y) / joystickScale - 100;
 		var a = -atan2(x, y) + 90;
 		var dis = hypot(x, y);
-		text.innerHTML = [x, y, a, dis];
 		if(dis > 100 * joystickScale || dis < -100 * joystickScale) {
 			x = cos(a) * 100 * joystickScale;
 			y = sin(a) * 100 * joystickScale;
