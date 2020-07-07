@@ -39,8 +39,8 @@ canvas {
 	right: 0;
 	top: 0;
 	bottom: 0;
-	width: 5vmin;
-	height: 5vmin;
+	width: 25%;
+	height: 25%;
 	background: radial-gradient(black, grey);
 	border-radius: 50%;
 }
