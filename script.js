@@ -36,7 +36,7 @@ const min = Math.min;
 const max = Math.max;
 const round = Math.round;
 const abs = Math.abs;
-const pi = Math.pi;
+const pi = Math.PI;
 const hypot = Math.hypot;
 const sin = theta => Math.sin(theta * pi / 180);
 const cos = theta => Math.cos(theta * pi / 180);
@@ -235,20 +235,21 @@ async function init() {
 		var x = (e.clientX - canDims.x) / canDims.width * 500;
 		var y = (e.clientY - canDims.y) / canDims.height * 500;
 		console.log(x, y);
-		this.sayFortyTwo();
 	});
 	ctx.textBaseline = "top";
 	ctx.imageSmoothingEnabled = false;
 	
 	var joystickMoveFunc = function(e) {
 		var joystickDims = joystickEl.getBoundingClientRect();
-		var x = (e.targetTouches[0].clientX - joystickDims.x) / joystickDims.width * 200 - 100;
-		var y = (e.targetTouches[0].clientY - joystickDims.y) / joystickDims.height * 200 - 100;
+		var joystickScale = joystickDims.width / 200;
+		var x = (e.targetTouches[0].clientX - joystickDims.x) / joystickScale - 100;
+		var y = (e.targetTouches[0].clientY - joystickDims.y) / joystickScale - 100;
 		var a = -atan2(x, y) + 90;
 		var dis = hypot(x, y);
-		if(dis > 90 || dis < -90) {
-			x = cos(a) * 90;
-			y = sin(a) * 90;
+		text.innerHTML = [x, y, a, dis];
+		if(dis > 100 * joystickScale || dis < -100 * joystickScale) {
+			x = cos(a) * 100 * joystickScale;
+			y = sin(a) * 100 * joystickScale;
 		}
 		joystickCenter.style.transform = `translate(${x}px, ${y}px)`;
 		joystick.x = x;
