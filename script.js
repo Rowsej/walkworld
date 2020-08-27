@@ -32,12 +32,7 @@ async function delay(millis) {
 function getTime() {
 	return (new Date()).getTime();
 }
-const min = Math.min;
-const max = Math.max;
-const round = Math.round;
-const abs = Math.abs;
-const pi = Math.PI;
-const hypot = Math.hypot;
+const {min, max, round, abs, PI: pi, hypot} = Math;
 const sin = theta => Math.sin(theta * pi / 180);
 const cos = theta => Math.cos(theta * pi / 180);
 const atan2 = (x, y) => Math.atan2(x, y) / pi * 180;
@@ -69,6 +64,10 @@ var player = {
 		x: 480,
 		y: 480
 	},
+	absPosUnrounded: {
+		x: 480,
+		y: 480
+	},
 	relPos: {
 		x: 0,
 		y: 0
@@ -81,6 +80,8 @@ var player = {
 		x: 0,
 		y: 0
 	},
+	speedX: 3,
+	speedY: -10,
 	jumps: 0,
 	maxJumps: 2,
 	lastJumpTime: 0,
@@ -247,10 +248,16 @@ async function init() {
 		var blockX = ~~((x + level.scrollOffset.x) / 40);
 		var blockY = ~~((y + level.scrollOffset.y) / 40);
 		if(level.map[blockX][blockY] == Blocks.AIR) {
-			level.map[blockX][blockY] = Blocks.STONE;
+			if(level.map[blockX][blockY - 1] != Blocks.AIR || level.map[blockX][blockY + 1] != Blocks.AIR || level.map[blockX - 1][blockY] != Blocks.AIR || level.map[blockX + 1][blockY] != Blocks.AIR) {
+				level.map[blockX][blockY] = Blocks.STONE;
+				if(player.checkForCollision()) {
+					level.map[blockX][blockY] = Blocks.AIR;
+				}
+			}
 		} else {
 			level.map[blockX][blockY] = Blocks.AIR;
 		}
+		calculateLighting();
 	});
 	ctx.textBaseline = "top";
 	ctx.imageSmoothingEnabled = false;
@@ -293,33 +300,36 @@ function loop() {
 	draw();
 	
 	window.requestAnimationFrame(loop);
+	//setTimeout(loop, 100 / 3);
 }
 function update() {
 	var goingUp = keyStates.includes("w") || joystick.y < -30;
 	var canJump = player.jumps < player.maxJumps && getTime() - player.lastJumpTime >= player.jumpInterval;
 	var canJump2 = player.v.y > 0? player.jumps > 0 : true && !player.isUnderBlock;
 	if(goingUp && canJump && canJump2) {
-		player.v.y = -10;
+		player.v.y = player.speedY;
 		player.jumps++;
 		player.lastJumpTime = getTime();
 	}
 	var goingLeft = keyStates.includes("a") || joystick.x < -30;
 	var goingRight = keyStates.includes("d") || joystick.x > 30;
 	if(goingLeft && !goingRight) {
-		player.v.x = -3;
+		player.v.x = -player.speedX;
 	} else if(goingRight && !goingLeft) {
-		player.v.x = 3;
+		player.v.x = player.speedX;
 	} else {
 		player.v.x = 0;
 	}
 	
-	player.absPos.x += player.v.x;
-	player.absPos.x = max(min(player.absPos.x, level.map.length * 40 - player.size.width), 0);
+	player.absPosUnrounded.x += player.v.x;
+	player.absPosUnrounded.x = max(min(player.absPosUnrounded.x, level.map.length * 40 - player.size.width), 0);
+	player.absPos.x = round(player.absPosUnrounded.x);
 	if(player.checkForCollision()) {
 		var direction = player.v.x / abs(player.v.x);
 		player.direction = direction;
 		while(player.checkForCollision()) {
 			player.absPos.x -= direction;
+			player.absPosUnrounded.x -= direction;
 		}
 	}
 	
@@ -327,7 +337,8 @@ function update() {
 	if(player.v.y > 0) {
 		player.isUnderBlock = false;
 	}
-	player.absPos.y += player.v.y;
+	player.absPosUnrounded.y += player.v.y;
+	player.absPos.y = round(player.absPosUnrounded.y);
 	var maxY = level.map[0].length * 40 - player.size.height;
 	if(player.absPos.y > maxY) {
 		player.absPos.y = maxY;
@@ -348,13 +359,13 @@ function update() {
 		player.direction = direction;
 		while(player.checkForCollision()) {
 			player.absPos.y -= direction;
+			player.absPosUnrounded.y -= direction;
 		}
 		player.v.y = 0;
 		player.jumps = 0;
 		player.lastJumpTime = 0;
 	}
 	
-	calculateLighting();
 	calculateScroll();
 }
 function draw() {
@@ -368,6 +379,11 @@ function draw() {
 		fps = frames;
 		frames = 0;
 		lastFpsUpdateTime = getTime();
+		if(abs(60 - fps) > 5) {
+			player.speedX = 60 * 3 / fps;
+			player.speedY = 60 * -10 / fps;
+			level.gravity = 60 * 0.5 / fps;
+		}
 	}
 	ctx.fillStyle = "black";
 	ctx.textAlign = "right";
@@ -377,6 +393,7 @@ function draw() {
 	ctx.fillText("©Rowsej 2020", 5, can.height - 35);
 	
 	ctx.fillText(JSON.stringify({ worldSeed: level.seed, playerPos: player.absPos }), 0, 0);
+	ctx.fillText(JSON.stringify({ speedX: player.speedX, speedY: player.speedY, gravity: level.gravity }), 0, 30);
 }
 
 async function generateLevel() {
@@ -386,10 +403,11 @@ async function generateLevel() {
 	var biomeHistory = [];
 	var biomeStartX = 0;
 	var groundHeight = ~~(level.map[0].length / 2);
+	// Basic generation
 	for(var x = 0; x < level.map.length; x++) {
 		if(x == ~~(level.map.length / 2)) {
-			player.absPos.x = x * 40 + 4;
-			player.absPos.y = groundHeight * 40 - 160;
+			player.absPosUnrounded.x = x * 40 + 4;
+			player.absPosUnrounded.y = groundHeight * 40 - 160;
 		}
 		for(var y = 0; y < groundHeight; y++) {
 			level.map[x][y] = Blocks.AIR;
@@ -429,36 +447,41 @@ async function generateLevel() {
 			biomeLength = 0;
 		}
 	}
+	// Biome merging
 	var lastTreeX = -1;
 	var currentBiome = biomeHistory[0];
 	for(x = 0; x < level.map.length; x++) {
 		if(currentBiome != biomeHistory[x]) {
 			var biomeA = currentBiome;
 			var biomeB = biomeHistory[x];
-			var biomeSplitX = x - 1;
+			var splitX = 0;
 			for(y = 0; y < level.map[0].length; y++) {
+				if(![-2, -1, 0, 1, 2, 3].map(n => Opacity[level.map[x + n][y]]).reduce((a, b) => a && b)) {
+					continue;
+				}
 				var biomeABlock = level.map[x - 1][y];
-				var biomeBBlock = level.map[min(x + 1, level.map.length)][y];
-				for(var tempX = x - 3; tempX < x + 2; tempX++) {
-					if(level.map[tempX][y] == Blocks.AIR) {
+				var biomeBBlock = level.map[x][y];
+				for(var tempX = x - 2; tempX < x + 4; tempX++) {
+					if(!Opacity[level.map[tempX][y]]) {
 						continue;
 					}
-					if(tempX < biomeSplitX) {
+					if(tempX - x < splitX) {
 						level.map[tempX][y] = biomeABlock;
 					} else {
 						level.map[tempX][y] = biomeBBlock;
 					}
 				}
 				var t = random(0, 4);
-				if(t == 0 && biomeSplitX < x + 2) {
-					biomeSplitX++;
-				} else if(t == 1 && biomeSplitX > x - 2) {
-					biomeSplitX--;
+				if(t == 0) {
+					splitX++;
+				} else if(t == 1) {
+					splitX--;
 				}
 			}
 			currentBiome = biomeHistory[x];
 		}
 	}
+	// Land features (trees etc.)
 	for(x = 0; x < level.map.length; x++) {
 		if(biomeHistory[x] == Biomes.PLAINS && !random(8) && x - lastTreeX > 2 && x > 0 && x < level.map.length - 1) {
 			for(y = 0; level.map[x][y] == Blocks.AIR; y++) {}
@@ -487,6 +510,7 @@ async function generateLevel() {
 			}
 		}
 	}
+	// Growing grass
 	for(x = 0; x < level.map.length; x++) {
 		for(y = 0; y < level.map[0].length; y++) {
 			if(level.map[x][y] == Blocks.DIRT && !Opacity[level.map[x][y - 1]]) {
@@ -494,6 +518,7 @@ async function generateLevel() {
 			}
 		}
 	}
+	// Generating coal
 	for(var n = 0; n < level.map.length * level.map[0].length / 50; n++) {
 		var veinX = random(0, level.map.length);
 		var veinY = random(0, level.map[0].length);
@@ -522,7 +547,7 @@ function calculateLighting() {
 		}
 		var groundLevel = y;
 		for(; y < level.map[0].length; y++) {
-			level.lighting[x][y] = max(1 - 0.1 * (y - groundLevel), 0);
+			level.lighting[x][y] = max(1 - 0.1 * (y - groundLevel + 2), 0) + 0.2;
 		}
 	}
 }
